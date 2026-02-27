@@ -168,8 +168,9 @@ export class VehicleGallery {
       this.viewMode = 'carousel';
       this.render();
     });
-    photoEl?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
+    photoEl?.addEventListener('keydown', (e: Event) => {
+      const ev = e as KeyboardEvent;
+      if (ev.key === 'Enter' || ev.key === ' ') {
         e.preventDefault();
         this.viewMode = 'carousel';
         this.render();

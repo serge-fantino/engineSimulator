@@ -2,7 +2,8 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: '.',
-  base: './', // relative base so the app works on GitHub Pages (e.g. user.github.io/repo-name/)
+  // GitHub Pages: set BASE_URL in workflow to e.g. /engineSimulator/
+  base: process.env.BASE_URL || './',
   server: {
     host: true,
   },

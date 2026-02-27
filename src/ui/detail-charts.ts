@@ -60,7 +60,6 @@ const CHART_LABELS: Record<DetailChartKind, string> = {
 };
 
 export class DetailCharts {
-  private container: HTMLElement;
   private profile: EngineProfile;
   private kind: DetailChartKind = 'power';
   private canvas: HTMLCanvasElement;
@@ -69,7 +68,6 @@ export class DetailCharts {
   private labelEl: HTMLElement | null;
 
   constructor(container: HTMLElement, profile: EngineProfile, headerLabelEl?: HTMLElement | null) {
-    this.container = container;
     this.profile = profile;
     this.labelEl = headerLabelEl ?? null;
 
@@ -346,7 +344,7 @@ export class DetailCharts {
       this.ctx.fillText(String(v), pad.left - 4, yv);
     }
 
-    curves.forEach(({ gear, points }, idx) => {
+    curves.forEach(({ points }, idx) => {
       const color = GEAR_COLORS[idx % GEAR_COLORS.length];
       this.ctx.beginPath();
       this.ctx.strokeStyle = color;

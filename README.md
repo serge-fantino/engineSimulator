@@ -59,16 +59,11 @@ Voir les documents détaillés dans `/docs` :
 
 ## Déploiement sur GitHub Pages
 
-L’app est prête à être hébergée sur GitHub Pages.
+1. **Settings → Pages** du dépôt : dans **Build and deployment**, mettre **Source** à **« GitHub Actions »** (pas « Deploy from a branch »). Sinon le site sert le code source et les assets (CSS/JS) renvoient des 404.
 
-1. **Pousser le dépôt sur GitHub** (si ce n’est pas déjà fait).
+2. À chaque push sur `main`, le workflow build + déploie. URL : `https://<user>.github.io/engineSimulator/`.
 
-2. **Activer GitHub Pages** : dans le dépôt, **Settings → Pages** :
-   - **Source** : **GitHub Actions** (et non « Deploy from a branch »).
-
-3. **Déploiement** : à chaque push sur `main`, le workflow construit l’app et la déploie. L’URL sera du type `https://<user>.github.io/<repo>/`.
-
-En local : `make build` puis `make preview` pour vérifier le build avant de pousser.
+En local : `make build` puis `make preview` pour tester le build.
 
 ## Contraintes
 
