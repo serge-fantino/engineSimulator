@@ -1,0 +1,47 @@
+{
+  "id": "ferrari-f136",
+  "name": "Ferrari F136 V8",
+  "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/White_Ferrari_458_Italia_front.JPG/300px-White_Ferrari_458_Italia_front.JPG",
+  "type": "v8-flatplane",
+  "displacement": 4497,
+  "cylinders": 8,
+  "aspiration": "na",
+  "driveType": "rwd",
+  "idleRPM": 1000,
+  "redlineRPM": 9000,
+  "peakTorque": 540,
+  "peakTorqueRPM": 6000,
+  "peakPower": 419,
+  "peakPowerRPM": 9000,
+  "torqueCurve": [
+    [1000, 100], [1500, 180], [2000, 260], [2500, 320],
+    [3000, 380], [3500, 420], [4000, 450], [4500, 475],
+    [5000, 500], [5500, 525], [6000, 540], [6500, 535],
+    [7000, 520], [7500, 495], [8000, 465], [8500, 430], [9000, 390]
+  ],
+  "firingOrder": [1, 8, 2, 7, 4, 5, 3, 6],
+  "gearRatios": [3.080, 2.190, 1.630, 1.290, 1.030, 0.840, 0.640],
+  "finalDrive": 4.440,
+  "wheelRadius": 0.33,
+  "exhaustConfig": {
+    "type": "straight-pipe",
+    "lowpassBaseFreq": 3500,
+    "lowpassRpmScale": 0.4,
+    "lowpassQ": 0.7,
+    "resonances": [
+      { "freq": 400, "Q": 7, "gainDB": 9 },
+      { "freq": 1100, "Q": 5, "gainDB": 6 },
+      { "freq": 3200, "Q": 3, "gainDB": 4 }
+    ]
+  },
+  "harmonicProfile": {
+    "numHarmonics": 28,
+    "spectralRolloff": 0.85,
+    "firingHarmonicBoost": 3.5,
+    "loadBrightness": 0.75
+  },
+  "vehicleMass": 1485,
+  "dragCoefficient": 0.33,
+  "frontalArea": 2.0,
+  "rollingResistance": 0.011
+}

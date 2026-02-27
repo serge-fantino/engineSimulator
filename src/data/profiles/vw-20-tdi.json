@@ -1,0 +1,51 @@
+{
+  "id": "vw-20-tdi",
+  "name": "VW 2.0 TDI Diesel",
+  "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/VW_Golf_VII_Variant_Highline_2.0_TDI.JPG/300px-VW_Golf_VII_Variant_Highline_2.0_TDI.JPG",
+  "type": "inline-4",
+  "displacement": 1968,
+  "cylinders": 4,
+  "aspiration": "turbo-diesel",
+  "driveType": "fwd",
+  "idleRPM": 800,
+  "redlineRPM": 5000,
+  "peakTorque": 320,
+  "peakTorqueRPM": 1750,
+  "peakPower": 103,
+  "peakPowerRPM": 4000,
+  "torqueCurve": [
+    [800, 80], [1000, 150], [1200, 220], [1500, 280],
+    [1750, 320], [2000, 320], [2500, 320], [3000, 290],
+    [3500, 250], [4000, 210], [4500, 170], [5000, 120]
+  ],
+  "firingOrder": [1, 3, 4, 2],
+  "gearRatios": [3.778, 2.118, 1.360, 0.971, 0.756, 0.635],
+  "finalDrive": 3.450,
+  "wheelRadius": 0.32,
+  "exhaustConfig": {
+    "type": "stock",
+    "lowpassBaseFreq": 700,
+    "lowpassRpmScale": 0.12,
+    "lowpassQ": 0.6,
+    "resonances": [
+      { "freq": 300, "Q": 3, "gainDB": 4 },
+      { "freq": 900, "Q": 2, "gainDB": 2 }
+    ]
+  },
+  "harmonicProfile": {
+    "numHarmonics": 20,
+    "spectralRolloff": 1.2,
+    "firingHarmonicBoost": 2.5,
+    "loadBrightness": 0.5
+  },
+  "turbo": {
+    "maxBoostBar": 1.8,
+    "spoolTimeSec": 0.8,
+    "boostThresholdRPM": 1200,
+    "hasBOV": false
+  },
+  "vehicleMass": 1450,
+  "dragCoefficient": 0.30,
+  "frontalArea": 2.2,
+  "rollingResistance": 0.012
+}

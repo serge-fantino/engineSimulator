@@ -1,0 +1,47 @@
+{
+  "id": "porsche-911-gt3",
+  "name": "Porsche 911 GT3 Flat-6",
+  "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Porsche_911_GT3_4.0_%28992%29_1X7A7256.jpg/300px-Porsche_911_GT3_4.0_%28992%29_1X7A7256.jpg",
+  "type": "flat-6",
+  "displacement": 3996,
+  "cylinders": 6,
+  "aspiration": "na",
+  "driveType": "rwd",
+  "idleRPM": 900,
+  "redlineRPM": 9000,
+  "peakTorque": 470,
+  "peakTorqueRPM": 6100,
+  "peakPower": 375,
+  "peakPowerRPM": 8400,
+  "torqueCurve": [
+    [900, 140], [1500, 220], [2500, 310], [3500, 380],
+    [4500, 430], [5000, 450], [5500, 460], [6100, 470],
+    [6500, 465], [7000, 455], [7500, 440], [8000, 420],
+    [8400, 400], [9000, 370]
+  ],
+  "firingOrder": [1, 6, 2, 4, 3, 5],
+  "gearRatios": [3.31, 2.16, 1.61, 1.27, 1.03, 0.85, 0.71],
+  "finalDrive": 3.44,
+  "wheelRadius": 0.33,
+  "exhaustConfig": {
+    "type": "sport",
+    "lowpassBaseFreq": 2800,
+    "lowpassRpmScale": 0.5,
+    "lowpassQ": 0.9,
+    "resonances": [
+      { "freq": 500, "Q": 5, "gainDB": 8 },
+      { "freq": 1400, "Q": 4, "gainDB": 5 },
+      { "freq": 3500, "Q": 2, "gainDB": 3 }
+    ]
+  },
+  "harmonicProfile": {
+    "numHarmonics": 26,
+    "spectralRolloff": 0.85,
+    "firingHarmonicBoost": 3.5,
+    "loadBrightness": 0.75
+  },
+  "vehicleMass": 1418,
+  "dragCoefficient": 0.34,
+  "frontalArea": 2.0,
+  "rollingResistance": 0.010
+}

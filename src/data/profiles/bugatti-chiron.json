@@ -1,0 +1,53 @@
+{
+  "id": "bugatti-chiron",
+  "name": "Bugatti Chiron W16",
+  "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Bugatti_Chiron%2C_GIMS_2018%2C_Le_Grand-Saconnex_%281X7A1765%29.jpg/300px-Bugatti_Chiron%2C_GIMS_2018%2C_Le_Grand-Saconnex_%281X7A1765%29.jpg",
+  "type": "w16",
+  "displacement": 7993,
+  "cylinders": 16,
+  "aspiration": "turbo",
+  "driveType": "awd",
+  "idleRPM": 700,
+  "redlineRPM": 6900,
+  "peakTorque": 1600,
+  "peakTorqueRPM": 2000,
+  "peakPower": 1103,
+  "peakPowerRPM": 6700,
+  "torqueCurve": [
+    [700, 300], [1000, 600], [1500, 1200], [2000, 1600],
+    [2500, 1600], [3000, 1600], [3500, 1600], [4000, 1600],
+    [4500, 1550], [5000, 1500], [5500, 1400], [6000, 1300],
+    [6500, 1200], [6900, 1100]
+  ],
+  "firingOrder": [1, 12, 7, 4, 15, 6, 13, 8, 3, 16, 11, 2, 9, 14, 5, 10],
+  "gearRatios": [3.846, 2.476, 1.786, 1.391, 1.121, 0.943, 0.794],
+  "finalDrive": 2.235,
+  "wheelRadius": 0.36,
+  "exhaustConfig": {
+    "type": "sport",
+    "lowpassBaseFreq": 1600,
+    "lowpassRpmScale": 0.3,
+    "lowpassQ": 1.0,
+    "resonances": [
+      { "freq": 400, "Q": 4, "gainDB": 8 },
+      { "freq": 1200, "Q": 3, "gainDB": 5 },
+      { "freq": 2800, "Q": 2, "gainDB": 3 }
+    ]
+  },
+  "harmonicProfile": {
+    "numHarmonics": 28,
+    "spectralRolloff": 1.1,
+    "firingHarmonicBoost": 2.0,
+    "loadBrightness": 0.6
+  },
+  "turbo": {
+    "maxBoostBar": 1.6,
+    "spoolTimeSec": 0.6,
+    "boostThresholdRPM": 1500,
+    "hasBOV": true
+  },
+  "vehicleMass": 1995,
+  "dragCoefficient": 0.35,
+  "frontalArea": 2.07,
+  "rollingResistance": 0.010
+}

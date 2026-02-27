@@ -1,0 +1,45 @@
+{
+  "id": "toyota-2gr-fe",
+  "name": "Toyota 2GR-FE V6",
+  "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/2021_Toyota_Camry_TRD_V6.jpg/300px-2021_Toyota_Camry_TRD_V6.jpg",
+  "type": "v6",
+  "displacement": 3456,
+  "cylinders": 6,
+  "aspiration": "na",
+  "driveType": "fwd",
+  "idleRPM": 650,
+  "redlineRPM": 6500,
+  "peakTorque": 336,
+  "peakTorqueRPM": 4700,
+  "peakPower": 200,
+  "peakPowerRPM": 6200,
+  "torqueCurve": [
+    [650, 80], [1000, 150], [1500, 220], [2000, 270],
+    [2500, 300], [3000, 320], [3500, 330], [4000, 334],
+    [4700, 336], [5000, 330], [5500, 310], [6000, 280], [6500, 240]
+  ],
+  "firingOrder": [1, 2, 3, 4, 5, 6],
+  "gearRatios": [3.520, 2.042, 1.400, 1.000, 0.716, 0.586],
+  "finalDrive": 3.933,
+  "wheelRadius": 0.33,
+  "exhaustConfig": {
+    "type": "stock",
+    "lowpassBaseFreq": 900,
+    "lowpassRpmScale": 0.15,
+    "lowpassQ": 0.8,
+    "resonances": [
+      { "freq": 450, "Q": 3, "gainDB": 5 },
+      { "freq": 1300, "Q": 2, "gainDB": 3 }
+    ]
+  },
+  "harmonicProfile": {
+    "numHarmonics": 24,
+    "spectralRolloff": 1.0,
+    "firingHarmonicBoost": 3.5,
+    "loadBrightness": 0.6
+  },
+  "vehicleMass": 1600,
+  "dragCoefficient": 0.30,
+  "frontalArea": 2.3,
+  "rollingResistance": 0.012
+}

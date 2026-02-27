@@ -1,0 +1,46 @@
+{
+  "id": "lamborghini-aventador",
+  "name": "Lamborghini Aventador V12",
+  "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Lamborghini_Aventador_LP700-4.jpg/300px-Lamborghini_Aventador_LP700-4.jpg",
+  "type": "v12",
+  "displacement": 6498,
+  "cylinders": 12,
+  "aspiration": "na",
+  "driveType": "awd",
+  "idleRPM": 800,
+  "redlineRPM": 8500,
+  "peakTorque": 690,
+  "peakTorqueRPM": 5500,
+  "peakPower": 566,
+  "peakPowerRPM": 8250,
+  "torqueCurve": [
+    [800, 200], [1500, 350], [2500, 450], [3500, 550],
+    [4500, 620], [5500, 690], [6000, 680], [6500, 660],
+    [7000, 640], [7500, 610], [8000, 570], [8500, 520]
+  ],
+  "firingOrder": [1, 7, 5, 11, 3, 9, 6, 12, 2, 8, 4, 10],
+  "gearRatios": [3.91, 2.56, 1.81, 1.39, 1.08, 0.88, 0.73],
+  "finalDrive": 3.21,
+  "wheelRadius": 0.35,
+  "exhaustConfig": {
+    "type": "straight-pipe",
+    "lowpassBaseFreq": 3200,
+    "lowpassRpmScale": 0.4,
+    "lowpassQ": 0.8,
+    "resonances": [
+      { "freq": 450, "Q": 6, "gainDB": 9 },
+      { "freq": 1100, "Q": 4, "gainDB": 6 },
+      { "freq": 2800, "Q": 3, "gainDB": 4 }
+    ]
+  },
+  "harmonicProfile": {
+    "numHarmonics": 28,
+    "spectralRolloff": 0.85,
+    "firingHarmonicBoost": 3.0,
+    "loadBrightness": 0.7
+  },
+  "vehicleMass": 1575,
+  "dragCoefficient": 0.33,
+  "frontalArea": 2.12,
+  "rollingResistance": 0.010
+}

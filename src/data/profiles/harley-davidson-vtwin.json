@@ -1,0 +1,46 @@
+{
+  "id": "harley-davidson-vtwin",
+  "name": "Harley-Davidson V-Twin",
+  "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Harley_Davidson_Fat_Boy_2018_FLFBS.jpg/300px-Harley_Davidson_Fat_Boy_2018_FLFBS.jpg",
+  "type": "v-twin",
+  "displacement": 1868,
+  "cylinders": 2,
+  "aspiration": "na",
+  "driveType": "rwd",
+  "idleRPM": 800,
+  "redlineRPM": 5500,
+  "peakTorque": 150,
+  "peakTorqueRPM": 3000,
+  "peakPower": 65,
+  "peakPowerRPM": 4800,
+  "torqueCurve": [
+    [800, 50], [1000, 70], [1500, 100], [2000, 125],
+    [2500, 140], [3000, 150], [3500, 148], [4000, 142],
+    [4500, 132], [4800, 120], [5000, 110], [5500, 95]
+  ],
+  "firingOrder": [1, 2],
+  "gearRatios": [3.36, 2.30, 1.65, 1.29, 1.00, 0.84],
+  "finalDrive": 2.41,
+  "wheelRadius": 0.33,
+  "exhaustConfig": {
+    "type": "straight-pipe",
+    "lowpassBaseFreq": 1200,
+    "lowpassRpmScale": 0.35,
+    "lowpassQ": 0.7,
+    "resonances": [
+      { "freq": 250, "Q": 4, "gainDB": 10 },
+      { "freq": 700, "Q": 3, "gainDB": 6 },
+      { "freq": 1500, "Q": 2, "gainDB": 3 }
+    ]
+  },
+  "harmonicProfile": {
+    "numHarmonics": 20,
+    "spectralRolloff": 0.7,
+    "firingHarmonicBoost": 4.0,
+    "loadBrightness": 0.6
+  },
+  "vehicleMass": 320,
+  "dragCoefficient": 0.65,
+  "frontalArea": 0.70,
+  "rollingResistance": 0.013
+}
