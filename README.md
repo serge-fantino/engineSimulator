@@ -57,6 +57,19 @@ Voir les documents détaillés dans `/docs` :
 - **Persistance** : LocalStorage / IndexedDB pour les profils utilisateur
 - **Déploiement** : PWA installable, HTTPS obligatoire (requis par les APIs capteurs)
 
+## Déploiement sur GitHub Pages
+
+L’app est prête à être hébergée sur GitHub Pages.
+
+1. **Pousser le dépôt sur GitHub** (si ce n’est pas déjà fait).
+
+2. **Activer GitHub Pages** : dans le dépôt, **Settings → Pages** :
+   - **Source** : **GitHub Actions** (et non « Deploy from a branch »).
+
+3. **Déploiement** : à chaque push sur `main`, le workflow construit l’app et la déploie. L’URL sera du type `https://<user>.github.io/<repo>/`.
+
+En local : `make build` puis `make preview` pour vérifier le build avant de pousser.
+
 ## Contraintes
 
 - **HTTPS obligatoire** : Les APIs Geolocation et DeviceMotion nécessitent un contexte sécurisé
