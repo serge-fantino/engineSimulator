@@ -1,6 +1,6 @@
 import type { TransmissionMode, InputMode } from '../domain/types';
 import type { SensorStatus } from '../sensors/sensor-provider';
-import type { AudioDebugInfo } from '../audio/audio-engine';
+import type { AudioDebugInfo, ToneOptions } from '../audio/audio-engine';
 
 export interface ControlState {
   throttle: number;
@@ -13,6 +13,7 @@ export interface ControlState {
 export type VolumeCallback = (vol: number) => void;
 export type PowerCallback = (on: boolean) => void;
 export type InputModeCallback = (mode: InputMode) => void;
+export type ToneCallback = (options: ToneOptions) => void;
 
 export class Controls {
   private throttle: number = 0;
@@ -41,6 +42,7 @@ export class Controls {
   private hornClickCallback: (() => void | Promise<void>) | null = null;
   private audioDebugGetter: (() => AudioDebugInfo) | null = null;
   private audioDebugIntervalId: number = 0;
+  private toneCallback: ToneCallback | null = null;
 
   constructor(containerId: string) {
     this.container = document.getElementById(containerId)!;
@@ -74,6 +76,10 @@ export class Controls {
       this.updateAudioDebug();
       this.audioDebugIntervalId = window.setInterval(() => this.updateAudioDebug(), 1500);
     }
+  }
+
+  onToneChange(cb: ToneCallback): void {
+    this.toneCallback = cb;
   }
 
   get inputMode(): InputMode {
@@ -248,6 +254,16 @@ export class Controls {
       </div>
 
       <div class="control-section">
+        <div class="control-label">Son</div>
+        <div class="tone-sliders">
+          <label class="tone-label"><span>Grave</span><span id="bass-val">12</span> dB</label>
+          <input type="range" min="0" max="12" value="12" class="tone-slider" id="bass-slider">
+          <label class="tone-label"><span>Reverb</span><span id="reverb-val">33</span> %</label>
+          <input type="range" min="0" max="100" value="33" class="tone-slider" id="reverb-slider">
+        </div>
+      </div>
+
+      <div class="control-section">
         <div class="control-label">Test son</div>
         <button type="button" class="horn-btn" id="horn-btn" title="Tester la sortie audio (klaxon)">
           \uD83C\uDFA4 Klaxon
@@ -335,6 +351,28 @@ export class Controls {
     volSlider.addEventListener('input', () => {
       this.volumeCallback?.(parseFloat(volSlider.value) / 100);
     });
+
+    // Tone (bass + reverb)
+    const bassSlider = document.getElementById('bass-slider') as HTMLInputElement;
+    const reverbSlider = document.getElementById('reverb-slider') as HTMLInputElement;
+    const bassValEl = document.getElementById('bass-val')!;
+    const reverbValEl = document.getElementById('reverb-val')!;
+    const emitTone = () => {
+      const bassDb = parseFloat(bassSlider.value);
+      const reverbWet = parseFloat(reverbSlider.value) / 100;
+      bassValEl.textContent = String(bassDb);
+      reverbValEl.textContent = String(Math.round(reverbWet * 100));
+      this.toneCallback?.({ bassDb, reverbWet });
+    };
+    if (bassSlider) {
+      bassSlider.addEventListener('input', emitTone);
+      bassValEl.textContent = bassSlider.value;
+    }
+    if (reverbSlider) {
+      reverbSlider.addEventListener('input', emitTone);
+      reverbValEl.textContent = reverbSlider.value;
+    }
+    emitTone(); // applique les valeurs par défaut (grave 12 dB, reverb 33 %)
 
     // Horn (test sound)
     const hornBtn = document.getElementById('horn-btn');

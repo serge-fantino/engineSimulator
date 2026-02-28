@@ -1,0 +1,63 @@
+{
+  "id": "bugatti-chiron-ss300",
+  "name": "Bugatti Chiron Super Sport 300+",
+  "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/2019_Bugatti_Chiron_Super_Sport_300%2B_8.0_Front.jpg/300px-2019_Bugatti_Chiron_Super_Sport_300%2B_8.0_Front.jpg",
+  "type": "w16",
+  "displacement": 7993,
+  "cylinders": 16,
+  "aspiration": "turbo",
+  "driveType": "awd",
+  "idleRPM": 700,
+  "redlineRPM": 7100,
+  "peakTorque": 1600,
+  "peakTorqueRPM": 2000,
+  "peakPower": 1193,
+  "peakPowerRPM": 6700,
+  "torqueCurve": [
+    [700, 350],
+    [1000, 700],
+    [1500, 1400],
+    [2000, 1600],
+    [2500, 1600],
+    [3000, 1600],
+    [3500, 1600],
+    [4000, 1600],
+    [4500, 1580],
+    [5000, 1540],
+    [5500, 1480],
+    [6000, 1400],
+    [6500, 1280],
+    [7100, 1150]
+  ],
+  "firingOrder": [1, 12, 7, 4, 15, 6, 13, 8, 3, 16, 11, 2, 9, 14, 5, 10],
+  "gearRatios": [3.64, 2.35, 1.69, 1.32, 1.06, 0.89, 0.75],
+  "finalDrive": 2.235,
+  "wheelRadius": 0.36,
+  "exhaustConfig": {
+    "type": "straight-pipe",
+    "lowpassBaseFreq": 1800,
+    "lowpassRpmScale": 0.32,
+    "lowpassQ": 1,
+    "resonances": [
+      {"freq": 400, "Q": 4, "gainDB": 9},
+      {"freq": 1200, "Q": 3, "gainDB": 6},
+      {"freq": 3000, "Q": 2, "gainDB": 4}
+    ]
+  },
+  "harmonicProfile": {
+    "numHarmonics": 28,
+    "spectralRolloff": 1.05,
+    "firingHarmonicBoost": 2.2,
+    "loadBrightness": 0.65
+  },
+  "turbo": {
+    "maxBoostBar": 1.8,
+    "spoolTimeSec": 0.5,
+    "boostThresholdRPM": 1400,
+    "hasBOV": true
+  },
+  "vehicleMass": 1995,
+  "dragCoefficient": 0.33,
+  "frontalArea": 2.07,
+  "rollingResistance": 0.01
+}

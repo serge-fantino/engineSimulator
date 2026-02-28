@@ -2,7 +2,12 @@ import type { EngineProfile, TransmissionMode } from './types';
 
 const TWO_PI = 2 * Math.PI;
 const MIN_SHIFT_DELAY_MS = 800;
+const MIN_DOWNSHIFT_DELAY_MS = 450;   // rétrogradage plus réactif
+const KICKDOWN_SHIFT_DELAY_MS = 280;   // délai court pour enchaîner les descentes (kick-down)
 const SHIFT_DURATION_MS = 120;
+const KICKDOWN_THROTTLE = 0.82;        // au-dessus = demande forte, kick-down autorisé (tous véhicules)
+const LOW_THROTTLE = 0.25;             // en dessous = décélération/croisière, rétro plus agressif
+const MIN_THROTTLE_FOR_UPSHIFT = 0.22; // ne jamais monter de rapport en décélération (throttle bas)
 
 export class Transmission {
   private _gear: number = 0; // 0 = neutral
@@ -72,21 +77,50 @@ export class Transmission {
     }
   }
 
-  checkAutoShift(rpm: number, throttle: number, now: number): void {
+  /**
+   * Auto: montées de rapports, rétrogradages plus agressifs à la décélération,
+   * et kick-down (descente en série quand on accélère à fond en sous-régime).
+   */
+  checkAutoShift(rpm: number, throttle: number, speedMs: number, now: number): void {
     if (this._mode !== 'automatic' || this._isShifting) return;
-    if (this._gear === 0) return; // never auto-shift from neutral
-    if (now < this.manualOverrideUntil) return; // respect manual override
-    if (now - this.lastShiftTime < MIN_SHIFT_DELAY_MS) return;
+    if (this._gear === 0) return;
+    if (now < this.manualOverrideUntil) return;
 
-    const upshiftRPM =
-      this.profile.peakPowerRPM * (0.6 + 0.35 * throttle);
-    const downshiftRPM =
-      this.profile.peakTorqueRPM * (0.4 + 0.2 * throttle);
+    const timeSinceShift = now - this.lastShiftTime;
+    const isKickdown = throttle >= KICKDOWN_THROTTLE;
+    const minDelay = isKickdown ? KICKDOWN_SHIFT_DELAY_MS
+      : throttle < LOW_THROTTLE ? MIN_DOWNSHIFT_DELAY_MS
+      : MIN_SHIFT_DELAY_MS;
+    if (timeSinceShift < minDelay) return;
 
-    if (rpm > upshiftRPM && this._gear < this.maxGear) {
-      this.doShift(this._gear + 1, now);
+    const { peakPowerRPM, peakTorqueRPM, redlineRPM } = this.profile;
+
+    // Ne jamais monter de rapport en décélération : évite que la boîte "monte" quand on lève le pied
+    const allowUpshift = throttle >= MIN_THROTTLE_FOR_UPSHIFT;
+    const upshiftRPM = peakPowerRPM * (0.6 + 0.35 * throttle);
+
+    // Rétrogradage : seuil plus haut en décélération (throttle bas) pour descendre plus tôt
+    const downshiftBase = throttle < LOW_THROTTLE
+      ? 0.58
+      : 0.45 + 0.35 * throttle;
+    const downshiftRPM = peakTorqueRPM * downshiftBase;
+
+    // Kick-down (tous véhicules) : plein gaz en sous-régime → descendre jusqu'à plage de couple
+    const rpmInLowerGear = this._gear > 1
+      ? this.speedToRPM(speedMs, this._gear - 1)
+      : rpm;
+    const targetKickdownRPM = peakTorqueRPM * 1.0;  // en dessous du pic = kick-down
+    const safeRedline = redlineRPM * 1.05;          // marge pour rapports serrés (ex. F1)
+    const needKickdown = isKickdown && rpm < targetKickdownRPM && this._gear > 1
+      && rpmInLowerGear <= safeRedline;
+
+    // Ordre : d'abord kick-down, puis rétro, puis montée (et seulement si throttle suffisant)
+    if (needKickdown) {
+      this.doShift(this._gear - 1, now);
     } else if (rpm < downshiftRPM && this._gear > 1) {
       this.doShift(this._gear - 1, now);
+    } else if (allowUpshift && rpm > upshiftRPM && this._gear < this.maxGear) {
+      this.doShift(this._gear + 1, now);
     }
   }
 

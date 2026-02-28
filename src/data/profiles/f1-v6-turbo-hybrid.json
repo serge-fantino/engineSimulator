@@ -1,0 +1,63 @@
+{
+  "id": "f1-v6-turbo-hybrid",
+  "name": "F1 V6 Turbo Hybrid (2022)",
+  "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/2022_F1_car_at_Belgian_GP.jpg/300px-2022_F1_car_at_Belgian_GP.jpg",
+  "type": "v6",
+  "displacement": 1600,
+  "cylinders": 6,
+  "aspiration": "turbo",
+  "driveType": "rwd",
+  "idleRPM": 3500,
+  "redlineRPM": 15000,
+  "peakTorque": 500,
+  "peakTorqueRPM": 9500,
+  "peakPower": 582,
+  "peakPowerRPM": 12000,
+  "torqueCurve": [
+    [3500, 320],
+    [4000, 380],
+    [5000, 440],
+    [6000, 470],
+    [7000, 490],
+    [8000, 500],
+    [9000, 500],
+    [9500, 500],
+    [10000, 495],
+    [11000, 480],
+    [12000, 460],
+    [13000, 430],
+    [14000, 390],
+    [15000, 350]
+  ],
+  "firingOrder": [1, 6, 2, 4, 3, 5],
+  "gearRatios": [3.5, 2.92, 2.42, 2.08, 1.82, 1.58, 1.38, 1.22],
+  "finalDrive": 3.7,
+  "wheelRadius": 0.33,
+  "exhaustConfig": {
+    "type": "straight-pipe",
+    "lowpassBaseFreq": 4500,
+    "lowpassRpmScale": 0.35,
+    "lowpassQ": 0.8,
+    "resonances": [
+      {"freq": 600, "Q": 6, "gainDB": 8},
+      {"freq": 1800, "Q": 4, "gainDB": 5},
+      {"freq": 4000, "Q": 2.5, "gainDB": 3}
+    ]
+  },
+  "harmonicProfile": {
+    "numHarmonics": 24,
+    "spectralRolloff": 0.9,
+    "firingHarmonicBoost": 3.2,
+    "loadBrightness": 0.85
+  },
+  "turbo": {
+    "maxBoostBar": 3.8,
+    "spoolTimeSec": 0.18,
+    "boostThresholdRPM": 3600,
+    "hasBOV": true
+  },
+  "vehicleMass": 798,
+  "dragCoefficient": 0.9,
+  "frontalArea": 1.5,
+  "rollingResistance": 0.008
+}

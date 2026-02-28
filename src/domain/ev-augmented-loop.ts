@@ -63,9 +63,9 @@ export class EvAugmentedLoop {
       rpm = clampRPM(rpm, profile);
     }
 
-    // Auto-shift
+    // Auto-shift (rétro agressif + kick-down)
     if (transmissionMode === 'automatic') {
-      transmission.checkAutoShift(rpm, this.smoothedThrottle, timestamp);
+      transmission.checkAutoShift(rpm, this.smoothedThrottle, speedMs, timestamp);
     }
 
     // --- Engine torque & power (for dashboard display) ---

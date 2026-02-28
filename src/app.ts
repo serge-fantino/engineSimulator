@@ -75,6 +75,8 @@ export class App {
 
     this.controls.setHornClick(() => this.audioEngine.playHorn());
     this.controls.setAudioDebugGetter(() => this.audioEngine.getDebugInfo());
+    this.controls.onToneChange((opts) => this.audioEngine.setToneOptions(opts));
+    this.audioEngine.setToneOptions({ bassDb: 12, reverbWet: 0.33 });
 
     // Initial render (engine off state)
     this.dashboard.render(this.state);
@@ -214,7 +216,11 @@ export class App {
     }
     if (input.shiftDownPressed) {
       if (input.transmissionMode === 'automatic' && this.transmission.gear > 0) {
-        this.transmission.manualOverrideShift('down', timestamp);
+        if (this.transmission.gear === 1 && this.state.speedMs < 1.0) {
+          this.transmission.shiftDown(timestamp, this.state.speedMs);
+        } else {
+          this.transmission.manualOverrideShift('down', timestamp);
+        }
       } else {
         this.transmission.shiftDown(timestamp, this.state.speedMs);
       }
@@ -275,7 +281,12 @@ export class App {
     }
     if (input.shiftDownPressed) {
       if (input.transmissionMode === 'automatic' && this.transmission.gear > 0) {
-        this.transmission.manualOverrideShift('down', timestamp);
+        // À l'arrêt en 1re : autoriser le passage en neutre
+        if (this.transmission.gear === 1 && this.state.speedMs < 1.0) {
+          this.transmission.shiftDown(timestamp, this.state.speedMs);
+        } else {
+          this.transmission.manualOverrideShift('down', timestamp);
+        }
       } else {
         this.transmission.shiftDown(timestamp, this.state.speedMs);
       }
@@ -442,9 +453,9 @@ export class App {
       rpm = clampRPM(rpm, this.profile);
     }
 
-    // Auto shift
+    // Auto shift (rétro agressif + kick-down)
     if (input.transmissionMode === 'automatic') {
-      this.transmission.checkAutoShift(rpm, input.throttle, timestamp);
+      this.transmission.checkAutoShift(rpm, input.throttle, speedMs, timestamp);
     }
 
     // Power

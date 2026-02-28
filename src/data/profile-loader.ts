@@ -10,8 +10,12 @@ import vw20tdi from './profiles/vw-20-tdi.json';
 
 // Supercars
 import bugattiChiron from './profiles/bugatti-chiron.json';
+import bugattiChironSs300 from './profiles/bugatti-chiron-ss300.json';
 import lamborghiniAventador from './profiles/lamborghini-aventador.json';
 import porsche911gt3 from './profiles/porsche-911-gt3.json';
+
+// Record / extreme
+import f1V6Turbo from './profiles/f1-v6-turbo-hybrid.json';
 
 // Motorcycles
 import ducatiPanigaleV4 from './profiles/ducati-panigale-v4.json';
@@ -39,8 +43,15 @@ const profileGroups: ProfileGroup[] = [
     label: 'Supercars',
     profiles: [
       bugattiChiron as EngineProfile,
+      bugattiChironSs300 as EngineProfile,
       lamborghiniAventador as EngineProfile,
       porsche911gt3 as EngineProfile,
+    ],
+  },
+  {
+    label: 'Record / F1',
+    profiles: [
+      f1V6Turbo as EngineProfile,
     ],
   },
   {

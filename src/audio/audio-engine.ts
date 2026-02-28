@@ -10,6 +10,13 @@ export interface AudioDebugInfo {
   canPlay: boolean;
 }
 
+export interface ToneOptions {
+  /** Bass boost in dB (e.g. 0 to +9). Low shelf at ~120 Hz. */
+  bassDb: number;
+  /** Reverb amount 0 = dry, 1 = full wet. */
+  reverbWet: number;
+}
+
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   /** One-off context created by "Test son" when engine is off; used for debug display. */
@@ -25,6 +32,11 @@ export class AudioEngine {
   private activePopSource: AudioBufferSourceNode | null = null;
   /** Dedicated gain node for pops/bangs — bypasses compressor */
   private popGain: GainNode | null = null;
+  /** Tone: bass shelf + reverb (dry/wet) */
+  private bassShelf: BiquadFilterNode | null = null;
+  private reverbConvolver: ConvolverNode | null = null;
+  private toneDryGain: GainNode | null = null;
+  private toneWetGain: GainNode | null = null;
   /** Decel crackle state */
   private _crackleActive: boolean = false;
   /** Tire squeal nodes (for launch control) */
@@ -68,6 +80,31 @@ export class AudioEngine {
       this.turboAudio = new TurboAudio(ctx, profile.turbo);
     }
 
+    // Bass shelf (paramétrable) — son plus grave
+    this.bassShelf = ctx.createBiquadFilter();
+    this.bassShelf.type = 'lowshelf';
+    this.bassShelf.frequency.value = 120;
+    this.bassShelf.gain.value = 0;
+
+    // Reverb: IR générée (salle courte) + dry/wet
+    const irLength = Math.min(2 * ctx.sampleRate, 96000); // max ~2 s at 48k
+    const irBuffer = ctx.createBuffer(1, irLength, ctx.sampleRate);
+    const irData = irBuffer.getChannelData(0);
+    const decaySec = 0.8;
+    const decaySamples = decaySec * ctx.sampleRate;
+    irData[0] = 1;
+    for (let i = 1; i < irLength; i++) {
+      irData[i] = (Math.random() * 2 - 1) * Math.exp(-i / decaySamples);
+    }
+    this.reverbConvolver = ctx.createConvolver();
+    this.reverbConvolver.buffer = irBuffer;
+    this.reverbConvolver.normalize = true;
+
+    this.toneDryGain = ctx.createGain();
+    this.toneDryGain.gain.value = 1;
+    this.toneWetGain = ctx.createGain();
+    this.toneWetGain.gain.value = 0;
+
     // Compressor (limiter) — for engine tone only
     this.compressor = ctx.createDynamicsCompressor();
     this.compressor.threshold.value = -6;
@@ -84,9 +121,14 @@ export class AudioEngine {
     this.masterGain = ctx.createGain();
     this.masterGain.gain.value = 0.7;
 
-    // Route: worklet -> exhaust -> compressor -> master -> output
+    // Route: worklet -> exhaust -> bassShelf -> [dry + reverb] -> compressor -> master
     this.workletNode.connect(this.exhaustFilter.input);
-    this.exhaustFilter.output.connect(this.compressor);
+    this.exhaustFilter.output.connect(this.bassShelf!);
+    this.bassShelf.connect(this.toneDryGain!);
+    this.bassShelf.connect(this.reverbConvolver!);
+    this.reverbConvolver.connect(this.toneWetGain!);
+    this.toneDryGain.connect(this.compressor);
+    this.toneWetGain.connect(this.compressor);
 
     if (this.turboAudio) {
       this.turboAudio.output.connect(this.compressor);
@@ -199,7 +241,7 @@ export class AudioEngine {
     source.onended = () => { this.activePopSource = null; };
   }
 
-  /** Deceleration crackle — burst of micro-pops on overrun */
+  /** Deceleration crackle — burst of pops/bangs on overrun (plus audible). */
   triggerDecelCrackle(): void {
     if (!this.ctx || !this.popGain || this._crackleActive) return;
     const ctx = this.ctx;
@@ -215,13 +257,16 @@ export class AudioEngine {
       }
     }
 
-    // 3-7 micro-pops
-    const numPops = 3 + Math.floor(Math.random() * 5);
+    // Série plus longue : 10–20 pops, espacement et gain aléatoires
+    const numPops = 10 + Math.floor(Math.random() * 11);
     let timeOffset = 0;
     const now = ctx.currentTime;
 
     for (let i = 0; i < numPops; i++) {
-      const delay = 0.03 + Math.random() * 0.05; // 30-80ms spacing
+      // Espacement aléatoire : parfois rafale (court), parfois pause (long)
+      const baseDelay = 0.018 + Math.random() * 0.035;
+      const burst = Math.random() < 0.35; // 35 % chance de pop très rapproché
+      const delay = burst ? baseDelay * 0.5 : baseDelay;
       timeOffset += delay;
 
       const source = ctx.createBufferSource();
@@ -229,26 +274,29 @@ export class AudioEngine {
 
       const bp = ctx.createBiquadFilter();
       bp.type = 'bandpass';
-      bp.frequency.value = 600 + Math.random() * 900; // 600-1500 Hz
-      bp.Q.value = 3 + Math.random() * 2;
+      bp.frequency.value = 180 + Math.random() * 550; // 180–730 Hz, un peu d’aléa
+      bp.Q.value = 2 + Math.random() * 2;
 
       const gain = ctx.createGain();
-      // Decreasing gain for each pop
-      const popGainVal = (0.6 - i * 0.06) * (0.5 + Math.random() * 0.5);
+      // Décroissance globale sur la série + aléa par pop (quelques pops plus forts)
+      const decay = 1 - (i / numPops) * 0.6;
+      const randomBoost = Math.random() < 0.25 ? 1.4 : 0.85 + Math.random() * 0.3;
+      const popGainVal = Math.min(1.2, decay * randomBoost);
+      const attack = 0.003 + Math.random() * 0.003;
+      const decayTime = 0.04 + Math.random() * 0.04;
       const t = now + timeOffset;
       gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(Math.max(0.1, popGainVal), t + 0.003);
-      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.04);
+      gain.gain.linearRampToValueAtTime(Math.max(0.2, popGainVal), t + attack);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + decayTime);
 
       source.connect(bp);
       bp.connect(gain);
       gain.connect(this.popGain!);
       source.start(t);
-      source.stop(t + 0.06);
+      source.stop(t + Math.min(0.1, decayTime + 0.02));
     }
 
-    // Reset crackle flag after all pops are done
-    setTimeout(() => { this._crackleActive = false; }, (timeOffset + 0.1) * 1000);
+    setTimeout(() => { this._crackleActive = false; }, (timeOffset + 0.2) * 1000);
   }
 
   /** Tire squeal — persistent noise modulated by wheel slip */
@@ -340,6 +388,16 @@ export class AudioEngine {
     }
   }
 
+  /** Réglages son grave + reverb (paramétrables depuis l’UI). */
+  setToneOptions(options: ToneOptions): void {
+    if (this.bassShelf) {
+      this.bassShelf.gain.value = Math.max(-6, Math.min(12, options.bassDb));
+    }
+    const wet = Math.max(0, Math.min(1, options.reverbWet));
+    if (this.toneDryGain) this.toneDryGain.gain.setTargetAtTime(1 - wet, 0, 0.05);
+    if (this.toneWetGain) this.toneWetGain.gain.setTargetAtTime(wet, 0, 0.05);
+  }
+
   /** Debug info for the UI (context state, sample rate, etc.). */
   getDebugInfo(): AudioDebugInfo {
     const c = this.ctx ?? this.testContext;
@@ -364,11 +422,13 @@ export class AudioEngine {
   /**
    * Play a short horn sound to test audio. Works without engine: creates a temporary
    * context on first use (must be called from a user gesture on mobile).
+   * Uses AudioBuffer instead of OscillatorNode for better reliability on iOS/Android.
    */
   async playHorn(): Promise<void> {
     const ctx = this.ctx ?? this.testContext;
     if (ctx) {
-      await this.playHornWithContext(ctx);
+      if (ctx.state === 'suspended') await ctx.resume();
+      this.scheduleHorn(ctx);
       return;
     }
     this.testContext = new AudioContext();
@@ -376,35 +436,34 @@ export class AudioEngine {
     if (testCtx.state === 'suspended') {
       await testCtx.resume();
     }
-    await this.playHornWithContext(testCtx);
+    // Small delay so mobile commits the context before first buffer (iOS/Android quirk)
+    setTimeout(() => this.scheduleHorn(testCtx), 50);
   }
 
-  private playHornWithContext(ctx: AudioContext): void {
-    const now = ctx.currentTime;
-    const duration = 0.4;
+  /**
+   * Horn as pre-rendered buffer (more reliable than OscillatorNode on mobile).
+   * Schedules with a tiny delay from "now" so the graph is committed.
+   */
+  private scheduleHorn(ctx: AudioContext): void {
+    const duration = 0.5;
+    const sr = ctx.sampleRate;
+    const numSamples = Math.floor(sr * duration);
+    const buffer = ctx.createBuffer(1, numSamples, sr);
+    const data = buffer.getChannelData(0);
     const f1 = 440;
     const f2 = 554;
-
-    const osc1 = ctx.createOscillator();
-    osc1.type = 'sine';
-    osc1.frequency.value = f1;
-    const osc2 = ctx.createOscillator();
-    osc2.type = 'sine';
-    osc2.frequency.value = f2;
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.2, now + 0.02);
-    gain.gain.setValueAtTime(0.2, now + duration * 0.7);
-    gain.gain.linearRampToValueAtTime(0, now + duration);
-
-    osc1.connect(gain);
-    osc2.connect(gain);
-    gain.connect(ctx.destination);
-    osc1.start(now);
-    osc2.start(now);
-    osc1.stop(now + duration);
-    osc2.stop(now + duration);
+    for (let i = 0; i < numSamples; i++) {
+      const t = i / sr;
+      const env = t < 0.02 ? t / 0.02 : t > duration - 0.05 ? (duration - t) / 0.05 : 1;
+      data[i] = env * 0.35 * (Math.sin(2 * Math.PI * f1 * t) + Math.sin(2 * Math.PI * f2 * t));
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+    const now = ctx.currentTime;
+    const startAt = now + 0.02; // let mobile commit the graph
+    source.start(startAt);
+    source.stop(startAt + duration);
   }
 
   async switchProfile(profile: EngineProfile): Promise<void> {
@@ -425,6 +484,10 @@ export class AudioEngine {
     // Disconnect old graph
     this.workletNode?.disconnect();
     this.exhaustFilter?.disconnect();
+    this.bassShelf?.disconnect();
+    this.reverbConvolver?.disconnect();
+    this.toneDryGain?.disconnect();
+    this.toneWetGain?.disconnect();
     this.turboAudio?.disconnect();
     this.compressor?.disconnect();
     this.popGain?.disconnect();
