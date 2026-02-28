@@ -9,6 +9,7 @@ import { Controls } from './ui/controls';
 import { VehicleGallery } from './ui/vehicle-gallery';
 import { getProfileGroups, getDefaultProfile } from './data/profile-loader';
 import { SensorProvider } from './sensors/sensor-provider';
+import { SensorAnalysis } from './sensors/sensor-analysis';
 import { EvAugmentedLoop } from './domain/ev-augmented-loop';
 
 export class App {
@@ -30,6 +31,7 @@ export class App {
   private launchPhaseTimer: number = 0; // countdown after LC release for maintained slip
   private gallery!: VehicleGallery;
   private sensorProvider: SensorProvider;
+  private sensorAnalysis: SensorAnalysis;
   private evLoop: EvAugmentedLoop;
   private inputMode: InputMode = 'keyboard';
 
@@ -54,6 +56,7 @@ export class App {
       (p) => this.switchProfile(p),
     );
     this.sensorProvider = new SensorProvider();
+    this.sensorAnalysis = new SensorAnalysis();
     this.evLoop = new EvAugmentedLoop();
     this.state = this.createInitialState();
 
@@ -137,6 +140,7 @@ export class App {
     if (this.inputMode === 'ev-augmented') {
       this.sensorProvider.stop();
       this.inputMode = 'keyboard';
+      this.dashboard.setEvSensorView(false);
       this.controls.revertToKeyboard();
     }
   }
@@ -153,6 +157,8 @@ export class App {
       this.inputMode = 'ev-augmented';
       this.evLoop.reset();
       this.evLoop.setTurbo(this.profile.turbo);
+      this.sensorAnalysis.reset();
+      this.dashboard.setEvSensorView(true);
 
       // Auto-start engine if not running
       if (!this.isRunning) {
@@ -166,6 +172,7 @@ export class App {
     } else {
       this.sensorProvider.stop();
       this.inputMode = 'keyboard';
+      this.dashboard.setEvSensorView(false);
     }
   }
 
@@ -227,6 +234,11 @@ export class App {
     }
 
     const sensorState = this.sensorProvider.update(dt);
+
+    // Run intermediate sensor analysis model
+    const sensorView = this.sensorAnalysis.update(sensorState, dt);
+    this.dashboard.renderSensorView(sensorView);
+
     const result = this.evLoop.update(
       sensorState,
       this.profile,
