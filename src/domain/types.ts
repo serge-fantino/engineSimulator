@@ -14,6 +14,7 @@ export type Aspiration = 'na' | 'turbo' | 'turbo-diesel';
 export type ExhaustType = 'stock' | 'sport' | 'straight-pipe';
 export type TransmissionMode = 'manual' | 'automatic';
 export type DriveType = 'fwd' | 'rwd' | 'awd';
+export type InputMode = 'keyboard' | 'ev-augmented';
 
 export interface TurboConfig {
   maxBoostBar: number;
