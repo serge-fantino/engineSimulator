@@ -64,10 +64,10 @@ export class App {
     this.controls.onInputModeChange((mode) => this.switchInputMode(mode));
     this.sensorProvider.onStatusChange((status) => this.controls.setEvStatus(status));
 
-    // Wire power toggle
-    this.controls.onPowerChange(async (on) => {
+    // Wire power toggle (sync callback to avoid minifier/await strict-mode issues on deploy)
+    this.controls.onPowerChange((on) => {
       if (on) {
-        await this.engineOn();
+        this.engineOn().catch((err) => console.error('Engine start failed', err));
       } else {
         this.engineOff();
       }
