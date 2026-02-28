@@ -814,3 +814,123 @@ body {
   opacity: 0.3;
   pointer-events: none;
 }
+
+/* ---- EV Sensor View ---- */
+.sensor-gauges {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.sensor-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.sensor-card-wide {
+  grid-column: 1 / -1;
+}
+
+.sensor-card-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.sensor-main-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.sensor-big-value {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.sensor-bar-track {
+  position: relative;
+  height: 8px;
+  background: var(--gauge-bg);
+  border-radius: 4px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.sensor-bar-track.accel-bar-track {
+  height: 10px;
+}
+
+.sensor-bar-center {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--text-dim);
+  transform: translateX(-1px);
+  z-index: 1;
+}
+
+.sensor-bar-fill {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.08s ease-out;
+  min-width: 2px;
+}
+
+.sensor-sub-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.sensor-detail-line {
+  font-size: 8px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+
+.sensor-info-row {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.sensor-info-item {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.sensor-info-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.sensor-info-value {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.sensor-info-unit {
+  font-size: 10px;
+  color: var(--text-secondary);
+}

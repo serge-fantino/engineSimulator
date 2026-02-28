@@ -9,6 +9,17 @@ export interface SensorState {
   accelerationMs2: number;
   gpsAccuracy: number;
   isGpsActive: boolean;
+  // Extended raw data for sensor analysis
+  rawAccelX: number;
+  rawAccelY: number;
+  rawAccelZ: number;
+  gravityX: number;
+  gravityY: number;
+  gravityZ: number;
+  hasAccelerometer: boolean;
+  hasPureAccel: boolean; // true if acceleration (without gravity) is available
+  gpsAccelerationMs2: number;
+  accelSmoothed: number;
 }
 
 export type SensorStatusCallback = (status: SensorStatus) => void;
@@ -29,6 +40,15 @@ export class SensorProvider {
   private accelSmoothed: number = 0;
   private hasAccelerometer: boolean = false;
   private deviceMotionHandler: ((e: DeviceMotionEvent) => void) | null = null;
+
+  // Raw accelerometer data for sensor analysis
+  private rawAccelX: number = 0;
+  private rawAccelY: number = 0;
+  private rawAccelZ: number = 0;
+  private gravityX: number = 0;
+  private gravityY: number = 0;
+  private gravityZ: number = 0;
+  private hasPureAccel: boolean = false;
 
   private statusCallback: SensorStatusCallback | null = null;
   private _isActive: boolean = false;
@@ -114,6 +134,13 @@ export class SensorProvider {
     this.lastGpsSpeed = 0;
     this.accelSmoothed = 0;
     this.gpsAcceleration = 0;
+    this.rawAccelX = 0;
+    this.rawAccelY = 0;
+    this.rawAccelZ = 0;
+    this.gravityX = 0;
+    this.gravityY = 0;
+    this.gravityZ = 0;
+    this.hasPureAccel = false;
     this.statusCallback?.({ state: 'inactive' });
   }
 
@@ -136,6 +163,16 @@ export class SensorProvider {
       accelerationMs2: this.lastGpsTimestamp > 0 ? this.gpsAcceleration : 0,
       gpsAccuracy: this.gpsAccuracy,
       isGpsActive: this._isActive && gpsStaleness < GPS_STALE_THRESHOLD_MS,
+      rawAccelX: this.rawAccelX,
+      rawAccelY: this.rawAccelY,
+      rawAccelZ: this.rawAccelZ,
+      gravityX: this.gravityX,
+      gravityY: this.gravityY,
+      gravityZ: this.gravityZ,
+      hasAccelerometer: this.hasAccelerometer,
+      hasPureAccel: this.hasPureAccel,
+      gpsAccelerationMs2: this.gpsAcceleration,
+      accelSmoothed: this.accelSmoothed,
     };
   }
 
@@ -188,9 +225,25 @@ export class SensorProvider {
 
   private startAccelerometer(): void {
     this.deviceMotionHandler = (event: DeviceMotionEvent) => {
-      // Use acceleration without gravity if available, else with gravity
-      const accel = event.acceleration || event.accelerationIncludingGravity;
+      // Track whether we have pure acceleration (without gravity)
+      const pureAccel = event.acceleration;
+      const accelWithGravity = event.accelerationIncludingGravity;
+      const accel = pureAccel || accelWithGravity;
       if (!accel) return;
+
+      this.hasPureAccel = !!(pureAccel && pureAccel.x !== null);
+
+      // Store raw values
+      this.rawAccelX = accel.x ?? 0;
+      this.rawAccelY = accel.y ?? 0;
+      this.rawAccelZ = accel.z ?? 0;
+
+      // Store gravity estimate from accelerationIncludingGravity
+      if (accelWithGravity) {
+        this.gravityX = accelWithGravity.x ?? 0;
+        this.gravityY = accelWithGravity.y ?? 0;
+        this.gravityZ = accelWithGravity.z ?? 0;
+      }
 
       // Use total horizontal magnitude as proxy for longitudinal acceleration.
       // This is orientation-independent — works regardless of phone mounting.

@@ -1,4 +1,5 @@
 import type { EngineProfile, EngineState } from '../domain/types';
+import type { SensorViewState } from '../sensors/sensor-analysis';
 import { PerfGraph } from './perf-graph';
 
 export class Dashboard {
@@ -27,6 +28,18 @@ export class Dashboard {
 
   // Performance graph
   private perfGraph!: PerfGraph;
+
+  // EV sensor view
+  private isEvSensorView: boolean = false;
+  private sensorAccelVal!: HTMLElement;
+  private sensorAccelBar!: HTMLElement;
+  private sensorAttitudeVal!: HTMLElement;
+  private sensorAttitudeBar!: HTMLElement;
+  private sensorAttitudeDetail!: HTMLElement;
+  private sensorGasVal!: HTMLElement;
+  private sensorGasBar!: HTMLElement;
+  private sensorSpeedVal!: HTMLElement;
+  private sensorGpsVal!: HTMLElement;
 
   constructor(canvasId: string, gaugesId: string, profile: EngineProfile) {
     this.canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -61,9 +74,155 @@ export class Dashboard {
   render(state: EngineState): void {
     this.lastState = state;
     this.drawTachometer(state.rpm, state.gear, state.isShifting, state.revLimiterActive);
-    this.updateGauges(state);
+    if (!this.isEvSensorView) {
+      this.updateGauges(state);
+    }
     this.updateSpeedBar(state.speedKmh);
     this.perfGraph.update(state);
+  }
+
+  setEvSensorView(enabled: boolean): void {
+    if (this.isEvSensorView === enabled) return;
+    this.isEvSensorView = enabled;
+    if (enabled) {
+      this.buildSensorGauges();
+    } else {
+      this.buildGauges();
+    }
+  }
+
+  renderSensorView(view: SensorViewState): void {
+    if (!this.isEvSensorView) return;
+
+    // Acceleration: show value and animate bar
+    const accelG = view.fusedAccelG;
+    this.sensorAccelVal.textContent = `${accelG >= 0 ? '+' : ''}${accelG.toFixed(2)}`;
+    // Bar: centered at 50%, positive goes right, negative goes left
+    const accelPct = Math.min(1, Math.abs(accelG) / 1.0) * 50; // 1G = full scale
+    if (accelG >= 0) {
+      this.sensorAccelBar.style.left = '50%';
+      this.sensorAccelBar.style.right = 'auto';
+      this.sensorAccelBar.style.width = `${accelPct}%`;
+      this.sensorAccelBar.style.background = 'var(--green)';
+    } else {
+      this.sensorAccelBar.style.left = 'auto';
+      this.sensorAccelBar.style.right = '50%';
+      this.sensorAccelBar.style.width = `${accelPct}%`;
+      this.sensorAccelBar.style.background = 'var(--accent)';
+    }
+
+    // Attitude quality
+    const qualPct = Math.round(view.attitudeQuality * 100);
+    this.sensorAttitudeVal.textContent = `${qualPct}`;
+    this.sensorAttitudeBar.style.width = `${qualPct}%`;
+    // Color: red < 30%, yellow 30-60%, green > 60%
+    this.sensorAttitudeBar.style.background =
+      qualPct < 30 ? 'var(--accent)' : qualPct < 60 ? 'var(--yellow)' : 'var(--green)';
+    // Detail breakdown
+    const d = view.attitudeDetails;
+    this.sensorAttitudeDetail.textContent =
+      `g:${d.gravityMagError.toFixed(1)} stab:${(d.gravityStability * 100).toFixed(0)}% xval:${(d.crossValidation * 100).toFixed(0)}%`;
+
+    // Gas level
+    const gasPct = Math.round(view.estimatedGasLevel * 100);
+    this.sensorGasVal.textContent = `${gasPct}`;
+    this.sensorGasBar.style.width = `${gasPct}%`;
+    this.sensorGasBar.style.background = gasPct > 70 ? 'var(--green)' : gasPct > 30 ? 'var(--yellow)' : 'var(--text-dim)';
+
+    // Speed
+    this.sensorSpeedVal.textContent = view.speedKmh.toFixed(0);
+
+    // GPS accuracy
+    this.sensorGpsVal.textContent = view.isGpsActive
+      ? `${view.gpsAccuracyM.toFixed(0)}m`
+      : '—';
+    this.sensorGpsVal.style.color = !view.isGpsActive
+      ? 'var(--accent)'
+      : view.gpsAccuracyM < 10 ? 'var(--green)'
+      : view.gpsAccuracyM < 30 ? 'var(--yellow)'
+      : 'var(--accent)';
+  }
+
+  private buildSensorGauges(): void {
+    this.gaugesEl.innerHTML = '';
+    this.gaugesEl.className = 'sensor-gauges';
+
+    // 1. Longitudinal acceleration (wide card with bar)
+    const accelCard = this.createSensorCard('sensor-accel-card', 'Accélération longitudinale', `
+      <div class="sensor-main-row">
+        <span class="sensor-big-value" id="sv-accel">+0.00</span>
+        <span class="gauge-unit">G</span>
+      </div>
+      <div class="sensor-bar-track accel-bar-track">
+        <div class="sensor-bar-center"></div>
+        <div class="sensor-bar-fill" id="sv-accel-bar"></div>
+      </div>
+      <div class="sensor-sub-labels">
+        <span>-1G</span><span>0</span><span>+1G</span>
+      </div>
+    `);
+    accelCard.classList.add('sensor-card-wide');
+    this.gaugesEl.appendChild(accelCard);
+
+    // 2. Attitude quality
+    const attCard = this.createSensorCard('sensor-attitude-card', 'Qualité assiette', `
+      <div class="sensor-main-row">
+        <span class="sensor-big-value" id="sv-attitude">0</span>
+        <span class="gauge-unit">%</span>
+      </div>
+      <div class="sensor-bar-track">
+        <div class="sensor-bar-fill attitude-fill" id="sv-attitude-bar"></div>
+      </div>
+      <div class="sensor-detail-line" id="sv-attitude-detail">—</div>
+    `);
+    this.gaugesEl.appendChild(attCard);
+
+    // 3. Gas level estimation
+    const gasCard = this.createSensorCard('sensor-gas-card', 'Niveau gaz estimé', `
+      <div class="sensor-main-row">
+        <span class="sensor-big-value" id="sv-gas">0</span>
+        <span class="gauge-unit">%</span>
+      </div>
+      <div class="sensor-bar-track">
+        <div class="sensor-bar-fill gas-fill" id="sv-gas-bar"></div>
+      </div>
+    `);
+    this.gaugesEl.appendChild(gasCard);
+
+    // 4. Speed + GPS accuracy (compact row)
+    const infoCard = this.createSensorCard('sensor-info-card', '', `
+      <div class="sensor-info-row">
+        <div class="sensor-info-item">
+          <span class="sensor-info-label">Vitesse</span>
+          <span class="sensor-info-value" id="sv-speed">0</span>
+          <span class="sensor-info-unit">km/h</span>
+        </div>
+        <div class="sensor-info-item">
+          <span class="sensor-info-label">GPS</span>
+          <span class="sensor-info-value" id="sv-gps">—</span>
+        </div>
+      </div>
+    `);
+    this.gaugesEl.appendChild(infoCard);
+
+    // Cache references
+    this.sensorAccelVal = document.getElementById('sv-accel')!;
+    this.sensorAccelBar = document.getElementById('sv-accel-bar')!;
+    this.sensorAttitudeVal = document.getElementById('sv-attitude')!;
+    this.sensorAttitudeBar = document.getElementById('sv-attitude-bar')!;
+    this.sensorAttitudeDetail = document.getElementById('sv-attitude-detail')!;
+    this.sensorGasVal = document.getElementById('sv-gas')!;
+    this.sensorGasBar = document.getElementById('sv-gas-bar')!;
+    this.sensorSpeedVal = document.getElementById('sv-speed')!;
+    this.sensorGpsVal = document.getElementById('sv-gps')!;
+  }
+
+  private createSensorCard(id: string, label: string, content: string): HTMLElement {
+    const card = document.createElement('div');
+    card.className = 'sensor-card';
+    card.id = id;
+    card.innerHTML = (label ? `<div class="sensor-card-label">${label}</div>` : '') + content;
+    return card;
   }
 
   private calculateMaxSpeed(profile: EngineProfile): number {
@@ -136,6 +295,7 @@ export class Dashboard {
 
   private buildGauges(): void {
     this.gaugesEl.innerHTML = '';
+    this.gaugesEl.className = '';
     const gauges = [
       { id: 'speed', label: 'Vitesse', unit: 'km/h' },
       { id: 'accel', label: 'Acc\u00e9l\u00e9ration', unit: 'G' },
