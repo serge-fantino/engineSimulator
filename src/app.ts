@@ -73,16 +73,19 @@ export class App {
       }
     });
 
+    this.controls.setHornClick(() => this.audioEngine.playHorn());
+    this.controls.setAudioDebugGetter(() => this.audioEngine.getDebugInfo());
+
     // Initial render (engine off state)
     this.dashboard.render(this.state);
     this.controls.updateGearDisplay(0, false);
   }
 
-  /** Start engine — called from power toggle */
+  /** Start engine — called from power toggle (must run in user gesture for mobile sound). */
   private async engineOn(): Promise<void> {
     if (this.isRunning) return;
     await this.audioEngine.initialize(this.profile);
-    this.audioEngine.start();
+    await this.audioEngine.start(); // await resume() so context is running before any sound
     await this.audioEngine.playStarterSound();
 
     // Reset to idle in neutral

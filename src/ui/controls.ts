@@ -1,5 +1,6 @@
 import type { TransmissionMode, InputMode } from '../domain/types';
 import type { SensorStatus } from '../sensors/sensor-provider';
+import type { AudioDebugInfo } from '../audio/audio-engine';
 
 export interface ControlState {
   throttle: number;
@@ -37,6 +38,9 @@ export class Controls {
   private evBtn!: HTMLButtonElement;
   private keyboardBtn!: HTMLButtonElement;
   private evStatusEl!: HTMLElement;
+  private hornClickCallback: (() => void | Promise<void>) | null = null;
+  private audioDebugGetter: (() => AudioDebugInfo) | null = null;
+  private audioDebugIntervalId: number = 0;
 
   constructor(containerId: string) {
     this.container = document.getElementById(containerId)!;
@@ -58,6 +62,18 @@ export class Controls {
 
   onInputModeChange(cb: InputModeCallback): void {
     this.inputModeCallback = cb;
+  }
+
+  setHornClick(cb: () => void | Promise<void>): void {
+    this.hornClickCallback = cb;
+  }
+
+  setAudioDebugGetter(getter: () => AudioDebugInfo): void {
+    this.audioDebugGetter = getter;
+    if (!this.audioDebugIntervalId) {
+      this.updateAudioDebug();
+      this.audioDebugIntervalId = window.setInterval(() => this.updateAudioDebug(), 1500);
+    }
   }
 
   get inputMode(): InputMode {
@@ -159,6 +175,14 @@ export class Controls {
     return state;
   }
 
+  private pedalSvg(kind: 'brake' | 'throttle'): string {
+    const isBrake = kind === 'brake';
+    const color = isBrake ? '#e94560' : '#22c55e';
+    const w = 28;
+    const h = 14;
+    return `<svg class="pedal-svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="3" width="26" height="8" rx="3" stroke="${color}" stroke-width="1.5" fill="${color}20"/></svg>`;
+  }
+
   private buildUI(): void {
     this.container.innerHTML = `
       <div class="control-section power-section">
@@ -179,17 +203,23 @@ export class Controls {
       <div class="control-section">
         <div class="control-label">P\u00e9dales</div>
         <div class="pedal-container">
-          <div class="pedal-wrapper">
-            <span class="pedal-value" id="throttle-val">0%</span>
-            <input type="range" min="0" max="100" value="0"
-                   class="pedal-slider throttle" id="throttle-slider" orient="vertical">
-            <span class="pedal-name">Gaz</span>
-          </div>
-          <div class="pedal-wrapper">
-            <span class="pedal-value" id="brake-val">0%</span>
+          <div class="pedal-wrapper" data-pedal="brake">
+            <div class="pedal-touch" id="brake-touch" title="Frein (toucher / maintenir)">
+              <span class="pedal-icon pedal-icon-brake" aria-hidden="true">${this.pedalSvg('brake')}</span>
+              <span class="pedal-value" id="brake-val">0%</span>
+            </div>
             <input type="range" min="0" max="100" value="0"
                    class="pedal-slider brake" id="brake-slider" orient="vertical">
             <span class="pedal-name">Frein</span>
+          </div>
+          <div class="pedal-wrapper" data-pedal="throttle">
+            <div class="pedal-touch" id="throttle-touch" title="Gaz (toucher / maintenir)">
+              <span class="pedal-icon pedal-icon-throttle" aria-hidden="true">${this.pedalSvg('throttle')}</span>
+              <span class="pedal-value" id="throttle-val">0%</span>
+            </div>
+            <input type="range" min="0" max="100" value="0"
+                   class="pedal-slider throttle" id="throttle-slider" orient="vertical">
+            <span class="pedal-name">Gaz</span>
           </div>
         </div>
       </div>
@@ -215,6 +245,14 @@ export class Controls {
         <div class="control-label">Volume</div>
         <input type="range" min="0" max="100" value="70"
                class="volume-slider" id="volume-slider">
+      </div>
+
+      <div class="control-section">
+        <div class="control-label">Test son</div>
+        <button type="button" class="horn-btn" id="horn-btn" title="Tester la sortie audio (klaxon)">
+          \uD83C\uDFA4 Klaxon
+        </button>
+        <div class="audio-debug" id="audio-debug" aria-live="polite"></div>
       </div>
 
       <div class="control-section key-hints-compact">
@@ -263,6 +301,8 @@ export class Controls {
     this.throttleValEl = document.getElementById('throttle-val')!;
     this.brakeValEl = document.getElementById('brake-val')!;
     this.gearNumberEl = document.getElementById('gear-number')!;
+
+    this.setupPedalTouch();
     this.autoBtn = document.getElementById('mode-auto') as HTMLButtonElement;
     this.manualBtn = document.getElementById(
       'mode-manual',
@@ -295,6 +335,62 @@ export class Controls {
     volSlider.addEventListener('input', () => {
       this.volumeCallback?.(parseFloat(volSlider.value) / 100);
     });
+
+    // Horn (test sound)
+    const hornBtn = document.getElementById('horn-btn');
+    if (hornBtn) {
+      hornBtn.addEventListener('click', () => {
+        const p = this.hornClickCallback?.();
+        if (p && typeof (p as Promise<unknown>).then === 'function') {
+          (p as Promise<void>).then(() => this.updateAudioDebug());
+        } else {
+          this.updateAudioDebug();
+        }
+      });
+    }
+  }
+
+  private updateAudioDebug(): void {
+    const el = document.getElementById('audio-debug');
+    if (!el || !this.audioDebugGetter) return;
+    const info = this.audioDebugGetter();
+    const lines: string[] = [
+      `Contexte: ${info.contextState}`,
+      info.sampleRate != null ? `Sample rate: ${info.sampleRate} Hz` : '',
+      `Worklet: ${info.workletLoaded ? 'oui' : 'non'}`,
+      info.source !== 'none' ? `Source: ${info.source}` : '',
+      info.canPlay ? 'Sortie: OK' : info.contextState === 'suspended' ? 'Sortie: débloquer (geste utilisateur)' : info.contextState === 'non initialisé' ? 'Sortie: cliquez Klaxon ou Power' : 'Sortie: —',
+    ].filter(Boolean);
+    el.textContent = lines.join(' · ');
+    el.className = 'audio-debug' + (info.canPlay ? ' audio-ok' : '');
+  }
+
+  private setupPedalTouch(): void {
+    const bindPedal = (touchEl: HTMLElement, slider: HTMLInputElement) => {
+      const setValue = (v: number) => {
+        slider.value = String(v);
+        slider.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+      const onDown = (e: PointerEvent) => {
+        e.preventDefault();
+        (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+        (e.currentTarget as HTMLElement).classList.add('pressed');
+        setValue(100);
+      };
+      const onUp = (e: PointerEvent) => {
+        (e.currentTarget as HTMLElement).classList.remove('pressed');
+        (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+        setValue(0);
+      };
+      touchEl.addEventListener('pointerdown', onDown);
+      touchEl.addEventListener('pointerup', onUp);
+      touchEl.addEventListener('pointerleave', onUp);
+      touchEl.addEventListener('pointercancel', onUp);
+    };
+    const brakeTouch = document.getElementById('brake-touch')!;
+    const throttleTouch = document.getElementById('throttle-touch')!;
+    bindPedal(brakeTouch, this.brakeSlider);
+    bindPedal(throttleTouch, this.throttleSlider);
   }
 
   private setupKeyboard(): void {

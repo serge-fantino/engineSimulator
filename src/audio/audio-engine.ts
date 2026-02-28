@@ -2,8 +2,18 @@ import type { EngineProfile, EngineState } from '../domain/types';
 import { ExhaustFilter } from './exhaust-filter';
 import { TurboAudio } from './turbo-audio';
 
+export interface AudioDebugInfo {
+  contextState: string;
+  sampleRate: number | null;
+  workletLoaded: boolean;
+  source: 'engine' | 'test' | 'none';
+  canPlay: boolean;
+}
+
 export class AudioEngine {
   private ctx: AudioContext | null = null;
+  /** One-off context created by "Test son" when engine is off; used for debug display. */
+  private testContext: AudioContext | null = null;
   private workletNode: AudioWorkletNode | null = null;
   private exhaustFilter: ExhaustFilter | null = null;
   private turboAudio: TurboAudio | null = null;
@@ -24,9 +34,13 @@ export class AudioEngine {
 
   async initialize(profile: EngineProfile): Promise<void> {
     this.profile = profile;
+    if (this.testContext) {
+      try { this.testContext.close(); } catch { /* ignore */ }
+      this.testContext = null;
+    }
+    // Do not force sampleRate: mobile often uses 48000; forcing 44100 can mute audio
     this.ctx = new AudioContext({
       latencyHint: 'interactive',
-      sampleRate: 44100,
     });
 
     // Load AudioWorklet module
@@ -87,9 +101,11 @@ export class AudioEngine {
     this.setupTireSqueal();
   }
 
-  start(): void {
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+  /** Resume AudioContext (required on mobile/iOS — must be awaited after user gesture). */
+  async start(): Promise<void> {
+    if (!this.ctx) return;
+    if (this.ctx.state === 'suspended') {
+      await this.ctx.resume();
     }
     this.isRunning = true;
   }
@@ -322,6 +338,73 @@ export class AudioEngine {
         0.05,
       );
     }
+  }
+
+  /** Debug info for the UI (context state, sample rate, etc.). */
+  getDebugInfo(): AudioDebugInfo {
+    const c = this.ctx ?? this.testContext;
+    if (!c) {
+      return {
+        contextState: 'non initialisé',
+        sampleRate: null,
+        workletLoaded: false,
+        source: 'none',
+        canPlay: false,
+      };
+    }
+    return {
+      contextState: c.state,
+      sampleRate: c.sampleRate,
+      workletLoaded: this.workletNode != null,
+      source: this.ctx ? 'engine' : 'test',
+      canPlay: c.state === 'running',
+    };
+  }
+
+  /**
+   * Play a short horn sound to test audio. Works without engine: creates a temporary
+   * context on first use (must be called from a user gesture on mobile).
+   */
+  async playHorn(): Promise<void> {
+    const ctx = this.ctx ?? this.testContext;
+    if (ctx) {
+      await this.playHornWithContext(ctx);
+      return;
+    }
+    this.testContext = new AudioContext();
+    const testCtx = this.testContext;
+    if (testCtx.state === 'suspended') {
+      await testCtx.resume();
+    }
+    await this.playHornWithContext(testCtx);
+  }
+
+  private playHornWithContext(ctx: AudioContext): void {
+    const now = ctx.currentTime;
+    const duration = 0.4;
+    const f1 = 440;
+    const f2 = 554;
+
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'sine';
+    osc1.frequency.value = f1;
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'sine';
+    osc2.frequency.value = f2;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.2, now + 0.02);
+    gain.gain.setValueAtTime(0.2, now + duration * 0.7);
+    gain.gain.linearRampToValueAtTime(0, now + duration);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+    osc1.start(now);
+    osc2.start(now);
+    osc1.stop(now + duration);
+    osc2.stop(now + duration);
   }
 
   async switchProfile(profile: EngineProfile): Promise<void> {

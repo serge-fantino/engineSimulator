@@ -63,7 +63,8 @@ Voir les documents détaillés dans `/docs` :
 
 2. À chaque push sur `main`, le workflow build + déploie. URL : `https://<user>.github.io/engineSimulator/`.
 
-En local : `make build` puis `make preview` pour tester le build.
+En local : `make build` puis `make preview` pour tester le build. Pour reproduire exactement le build et l’URL GitHub Pages : `make preview-pages` puis ouvrir **http://localhost:4173/engineSimulator/** ; en **HTTPS** (contexte sécurisé comme en prod) : `make preview-pages-https` puis **https://localhost:4173/engineSimulator/**.  
+Pour un certificat **reconnu par le navigateur** (sans avertissement) : installer [mkcert](https://github.com/FiloSottile/mkcert) puis exécuter une fois `mkcert -install` ; le script utilisera mkcert pour générer le certificat. Sinon, un certificat auto-signé est créé. Pour forcer la régénération du certificat : `make refresh-cert` ou `make preview-pages-https REFRESH_CERT=1` (il faudra accepter l’avertissement dans le navigateur).
 
 ## Contraintes
 
