@@ -30,7 +30,7 @@
     [15000, 350]
   ],
   "firingOrder": [1, 6, 2, 4, 3, 5],
-  "gearRatios": [3.5, 2.92, 2.42, 2.08, 1.82, 1.58, 1.38, 1.22],
+  "gearRatios": [5.00, 3.85, 3.05, 2.52, 2.10, 1.83, 1.62, 1.48],
   "finalDrive": 3.7,
   "wheelRadius": 0.33,
   "exhaustConfig": {
@@ -53,7 +53,7 @@
   "turbo": {
     "maxBoostBar": 3.8,
     "spoolTimeSec": 0.18,
-    "boostThresholdRPM": 3600,
+    "boostThresholdRPM": 3400,
     "hasBOV": true
   },
   "vehicleMass": 798,

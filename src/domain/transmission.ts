@@ -100,17 +100,21 @@ export class Transmission {
     const upshiftRPM = peakPowerRPM * (0.6 + 0.35 * throttle);
 
     // Rétrogradage : seuil plus haut en décélération (throttle bas) pour descendre plus tôt
+    // Plancher à idleRPM * 1.5 pour éviter que les moteurs turbo (peakTorque bas) calent
     const downshiftBase = throttle < LOW_THROTTLE
-      ? 0.58
+      ? 0.65
       : 0.45 + 0.35 * throttle;
-    const downshiftRPM = peakTorqueRPM * downshiftBase;
+    const downshiftRPM = Math.max(
+      peakTorqueRPM * downshiftBase,
+      this.profile.idleRPM * 1.5,
+    );
 
     // Kick-down (tous véhicules) : plein gaz en sous-régime → descendre jusqu'à plage de couple
     const rpmInLowerGear = this._gear > 1
       ? this.speedToRPM(speedMs, this._gear - 1)
       : rpm;
     const targetKickdownRPM = peakTorqueRPM * 1.0;  // en dessous du pic = kick-down
-    const safeRedline = redlineRPM * 1.05;          // marge pour rapports serrés (ex. F1)
+    const safeRedline = redlineRPM * 0.98;          // atterrir sous la zone rouge, pas dessus
     const needKickdown = isKickdown && rpm < targetKickdownRPM && this._gear > 1
       && rpmInLowerGear <= safeRedline;
 
