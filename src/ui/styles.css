@@ -663,3 +663,50 @@ body {
   font-family: inherit;
   font-size: 9px;
 }
+
+/* ---- EV Augmented Mode ---- */
+.ev-mode-toggle button#mode-ev.active {
+  background: #1e40af;
+  color: #93c5fd;
+}
+
+.ev-status {
+  font-size: 9px;
+  color: var(--text-dim);
+  min-height: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ev-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.ev-status-dot.active {
+  background: var(--green);
+}
+
+.ev-status-dot.requesting {
+  background: var(--yellow);
+  animation: ev-pulse 1s infinite;
+}
+
+.ev-status-dot.error {
+  background: var(--accent);
+}
+
+@keyframes ev-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.ev-active .pedal-container,
+.ev-active .key-hints-compact {
+  opacity: 0.3;
+  pointer-events: none;
+}

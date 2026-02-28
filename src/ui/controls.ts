@@ -1,4 +1,5 @@
-import type { TransmissionMode } from '../domain/types';
+import type { TransmissionMode, InputMode } from '../domain/types';
+import type { SensorStatus } from '../sensors/sensor-provider';
 
 export interface ControlState {
   throttle: number;
@@ -10,6 +11,7 @@ export interface ControlState {
 
 export type VolumeCallback = (vol: number) => void;
 export type PowerCallback = (on: boolean) => void;
+export type InputModeCallback = (mode: InputMode) => void;
 
 export class Controls {
   private throttle: number = 0;
@@ -29,7 +31,12 @@ export class Controls {
   private powerBtn!: HTMLButtonElement;
   private volumeCallback: VolumeCallback | null = null;
   private powerCallback: PowerCallback | null = null;
+  private inputModeCallback: InputModeCallback | null = null;
   private _isEngineOn: boolean = false;
+  private _inputMode: InputMode = 'keyboard';
+  private evBtn!: HTMLButtonElement;
+  private keyboardBtn!: HTMLButtonElement;
+  private evStatusEl!: HTMLElement;
 
   constructor(containerId: string) {
     this.container = document.getElementById(containerId)!;
@@ -47,6 +54,58 @@ export class Controls {
 
   onPowerChange(cb: PowerCallback): void {
     this.powerCallback = cb;
+  }
+
+  onInputModeChange(cb: InputModeCallback): void {
+    this.inputModeCallback = cb;
+  }
+
+  get inputMode(): InputMode {
+    return this._inputMode;
+  }
+
+  setEvStatus(status: SensorStatus): void {
+    if (!this.evStatusEl) return;
+    switch (status.state) {
+      case 'inactive':
+        this.evStatusEl.innerHTML = '';
+        break;
+      case 'requesting':
+        this.evStatusEl.innerHTML =
+          '<span class="ev-status-dot requesting"></span>En attente GPS...';
+        break;
+      case 'active':
+        this.evStatusEl.innerHTML =
+          `<span class="ev-status-dot active"></span>GPS actif (${Math.round(status.accuracy)}m)`;
+        break;
+      case 'error': {
+        const reasons: Record<string, string> = {
+          'permission-denied': 'Permission refus\u00e9e',
+          'unavailable': 'GPS indisponible',
+          'timeout': 'Timeout GPS',
+          'insecure-context': 'HTTPS requis',
+        };
+        this.evStatusEl.innerHTML =
+          `<span class="ev-status-dot error"></span>${reasons[status.reason]}`;
+        break;
+      }
+    }
+  }
+
+  revertToKeyboard(): void {
+    this._inputMode = 'keyboard';
+    this.keyboardBtn.classList.add('active');
+    this.evBtn.classList.remove('active');
+    this.container.classList.remove('ev-active');
+    this.setEvStatus({ state: 'inactive' });
+  }
+
+  simulatePowerOn(): void {
+    if (!this._isEngineOn) {
+      this._isEngineOn = true;
+      this.powerBtn.classList.add('on');
+      this.powerCallback?.(true);
+    }
   }
 
   updateGearDisplay(gear: number, isShifting: boolean): void {
@@ -108,6 +167,15 @@ export class Controls {
         </button>
       </div>
 
+      <div class="control-section ev-section">
+        <div class="control-label">Mode</div>
+        <div class="mode-toggle ev-mode-toggle">
+          <button id="mode-keyboard" class="active">Clavier</button>
+          <button id="mode-ev">EV+</button>
+        </div>
+        <div class="ev-status" id="ev-status"></div>
+      </div>
+
       <div class="control-section">
         <div class="control-label">P\u00e9dales</div>
         <div class="pedal-container">
@@ -161,6 +229,29 @@ export class Controls {
       this._isEngineOn = !this._isEngineOn;
       this.powerBtn.classList.toggle('on', this._isEngineOn);
       this.powerCallback?.(this._isEngineOn);
+    });
+
+    // EV mode toggle
+    this.keyboardBtn = document.getElementById('mode-keyboard') as HTMLButtonElement;
+    this.evBtn = document.getElementById('mode-ev') as HTMLButtonElement;
+    this.evStatusEl = document.getElementById('ev-status')!;
+
+    this.keyboardBtn.addEventListener('click', () => {
+      if (this._inputMode === 'keyboard') return;
+      this._inputMode = 'keyboard';
+      this.keyboardBtn.classList.add('active');
+      this.evBtn.classList.remove('active');
+      this.container.classList.remove('ev-active');
+      this.inputModeCallback?.('keyboard');
+    });
+
+    this.evBtn.addEventListener('click', () => {
+      if (this._inputMode === 'ev-augmented') return;
+      this._inputMode = 'ev-augmented';
+      this.evBtn.classList.add('active');
+      this.keyboardBtn.classList.remove('active');
+      this.container.classList.add('ev-active');
+      this.inputModeCallback?.('ev-augmented');
     });
 
     this.throttleSlider = document.getElementById(
