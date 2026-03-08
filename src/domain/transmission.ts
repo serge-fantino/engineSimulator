@@ -99,13 +99,14 @@ export class Transmission {
     const allowUpshift = throttle >= MIN_THROTTLE_FOR_UPSHIFT;
     const upshiftRPM = peakPowerRPM * (0.6 + 0.35 * throttle);
 
-    // Rétrogradage : seuil plus haut en décélération (throttle bas) pour descendre plus tôt
-    // Plancher à idleRPM * 1.5 pour éviter que les moteurs turbo (peakTorque bas) calent
-    const downshiftBase = throttle < LOW_THROTTLE
-      ? 0.65
-      : 0.45 + 0.35 * throttle;
+    // Rétrogradage : en décélération, seuil basé sur peakPowerRPM pour rester dans la plage utile
+    // (corrige les turbos dont le peakTorqueRPM bas donnait un seuil trop proche du ralenti)
+    // En accélération, seuil basé sur peakTorqueRPM, proportionnel au throttle
+    // Plancher à idleRPM * 1.5 pour éviter de caler
     const downshiftRPM = Math.max(
-      peakTorqueRPM * downshiftBase,
+      throttle < LOW_THROTTLE
+        ? peakPowerRPM * 0.35
+        : peakTorqueRPM * (0.45 + 0.35 * throttle),
       this.profile.idleRPM * 1.5,
     );
 
@@ -124,7 +125,12 @@ export class Transmission {
     } else if (rpm < downshiftRPM && this._gear > 1) {
       this.doShift(this._gear - 1, now);
     } else if (allowUpshift && rpm > upshiftRPM && this._gear < this.maxGear) {
-      this.doShift(this._gear + 1, now);
+      // Garde anti-oscillation : vérifier que le RPM après montée ne retombera pas
+      // sous le seuil de rétrogradage (sinon on oscille montée/descente en boucle)
+      const postShiftRPM = this.speedToRPM(speedMs, this._gear + 1);
+      if (postShiftRPM >= downshiftRPM * 1.1) {
+        this.doShift(this._gear + 1, now);
+      }
     }
   }
 
