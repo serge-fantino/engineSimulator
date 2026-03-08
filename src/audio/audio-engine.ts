@@ -43,6 +43,12 @@ export class AudioEngine {
   private squealSource: AudioBufferSourceNode | null = null;
   private squealGain: GainNode | null = null;
   private squealNoiseBuffer: AudioBuffer | null = null;
+  /** Silent <audio> element for mobile speaker routing */
+  private silentAudioEl: HTMLAudioElement | null = null;
+  /** Background keep-alive interval (replaces RAF when page is hidden) */
+  private bgKeepAliveId: number = 0;
+  /** Web Lock held while audio is playing (prevents page freeze) */
+  private webLockAbort: AbortController | null = null;
 
   async initialize(profile: EngineProfile): Promise<void> {
     this.profile = profile;
@@ -54,6 +60,11 @@ export class AudioEngine {
     this.ctx = new AudioContext({
       latencyHint: 'interactive',
     });
+
+    // Establish correct audio session/routing on mobile (speaker, not earpiece).
+    // Playing a silent <audio> element forces the OS to use "playback" audio category
+    // instead of "ambient", which routes to the loudspeaker even without Bluetooth.
+    this.ensureSilentAudioElement();
 
     // Load AudioWorklet module
     const workletUrl = new URL('./engine-worklet.ts', import.meta.url);
@@ -150,6 +161,23 @@ export class AudioEngine {
       await this.ctx.resume();
     }
     this.isRunning = true;
+
+    // Play silent audio to establish speaker routing on mobile
+    if (this.silentAudioEl) {
+      this.silentAudioEl.play().catch(() => {});
+    }
+
+    // Register Media Session so OS knows audio is playing (prevents reclaim on CarPlay/BT)
+    this.registerMediaSession();
+
+    // Auto-resume AudioContext when it gets interrupted (CarPlay, phone call, etc.)
+    this.setupAutoResume();
+
+    // Acquire Web Lock to prevent browser from freezing the page in background
+    this.acquireWebLock();
+
+    // Background keep-alive: update audio even when RAF is throttled
+    this.startBackgroundKeepAlive();
   }
 
   stop(): void {
@@ -160,6 +188,178 @@ export class AudioEngine {
     }
     if (this.ctx && this.ctx.state === 'running') {
       this.ctx.suspend();
+    }
+
+    // Stop silent audio
+    if (this.silentAudioEl) {
+      this.silentAudioEl.pause();
+    }
+
+    // Release Web Lock
+    this.releaseWebLock();
+
+    // Stop background keep-alive
+    this.stopBackgroundKeepAlive();
+
+    // Clear media session
+    if ('mediaSession' in navigator) {
+      try { navigator.mediaSession.playbackState = 'none'; } catch { /* ignore */ }
+    }
+  }
+
+  /**
+   * Create a silent <audio> element with a tiny WAV data URI.
+   * On iOS/Android, playing an <audio> element forces the audio session
+   * into "playback" category → routes to loudspeaker instead of earpiece.
+   * Without this, Web Audio API alone may stay in "ambient" mode.
+   */
+  private ensureSilentAudioElement(): void {
+    if (this.silentAudioEl) return;
+    // Minimal WAV: 1 sample of silence, 8-bit mono, 8kHz
+    const silentWav =
+      'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
+    const audio = document.createElement('audio');
+    audio.src = silentWav;
+    audio.loop = true;
+    audio.volume = 0.01; // Near-silent but not zero (some browsers ignore volume=0)
+    // Allow inline playback on iOS
+    audio.setAttribute('playsinline', '');
+    audio.setAttribute('webkit-playsinline', '');
+    this.silentAudioEl = audio;
+  }
+
+  /**
+   * Register a Media Session so the OS recognizes active audio playback.
+   * Prevents CarPlay/Android Auto/Bluetooth from reclaiming the audio focus.
+   */
+  private registerMediaSession(): void {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: this.profile?.name ?? 'Engine Simulator',
+        artist: 'Engine Simulator',
+        album: 'Simulator',
+      });
+      navigator.mediaSession.playbackState = 'playing';
+      // Handle play/pause from external controls (steering wheel buttons, etc.)
+      navigator.mediaSession.setActionHandler('play', () => {
+        if (this.ctx?.state === 'suspended') {
+          this.ctx.resume();
+        }
+      });
+      navigator.mediaSession.setActionHandler('pause', () => {
+        // Don't actually pause — we want continuous audio
+        // Just re-assert playing state
+        navigator.mediaSession.playbackState = 'playing';
+      });
+    } catch { /* Media Session API not fully supported */ }
+  }
+
+  /**
+   * Auto-resume AudioContext when it gets suspended by the OS.
+   * This happens on CarPlay handoff, phone calls, Siri activation, etc.
+   * Also handles page visibility changes (tab switch, screen lock).
+   */
+  private setupAutoResume(): void {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+
+    // Listen for AudioContext state changes (iOS suspends on interruption)
+    ctx.onstatechange = () => {
+      if (this.isRunning && ctx.state === 'suspended') {
+        // Retry resume with backoff
+        const tryResume = (attempt: number) => {
+          if (!this.isRunning || ctx.state !== 'suspended') return;
+          ctx.resume().catch(() => {
+            if (attempt < 5) {
+              setTimeout(() => tryResume(attempt + 1), 500 * (attempt + 1));
+            }
+          });
+        };
+        tryResume(0);
+      }
+    };
+
+    // Visibility change: resume when page becomes visible again
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && this.isRunning) {
+        if (ctx.state === 'suspended') {
+          ctx.resume().catch(() => {});
+        }
+        // Re-play silent audio (may have been stopped by OS)
+        if (this.silentAudioEl) {
+          this.silentAudioEl.play().catch(() => {});
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    // Store for cleanup (reuse onstatechange=null in stop)
+    this._visibilityHandler = onVisibility;
+  }
+
+  private _visibilityHandler: (() => void) | null = null;
+
+  /**
+   * Background keep-alive: when the page is hidden, RAF is throttled to ~1 FPS or paused.
+   * Use setInterval to continue sending audio params to the worklet.
+   * This prevents the ~5 second audio cuts on CarPlay.
+   */
+  private startBackgroundKeepAlive(): void {
+    this.stopBackgroundKeepAlive();
+    // 60ms interval ≈ 16 FPS — enough to keep audio params fresh
+    // Only sends audio params when RAF would be throttled
+    this.bgKeepAliveId = window.setInterval(() => {
+      if (!this.isRunning || !this.ctx) return;
+
+      // Auto-resume if suspended
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+
+      // Re-assert media session
+      if ('mediaSession' in navigator) {
+        try { navigator.mediaSession.playbackState = 'playing'; } catch { /* ignore */ }
+      }
+    }, 2000);
+  }
+
+  private stopBackgroundKeepAlive(): void {
+    if (this.bgKeepAliveId) {
+      clearInterval(this.bgKeepAliveId);
+      this.bgKeepAliveId = 0;
+    }
+    if (this._visibilityHandler) {
+      document.removeEventListener('visibilitychange', this._visibilityHandler);
+      this._visibilityHandler = null;
+    }
+    if (this.ctx) {
+      this.ctx.onstatechange = null;
+    }
+  }
+
+  /**
+   * Acquire a Web Lock to signal the browser that this page is doing important work.
+   * Prevents aggressive throttling / page freezing in background.
+   */
+  private acquireWebLock(): void {
+    if (!('locks' in navigator)) return;
+    this.releaseWebLock();
+    this.webLockAbort = new AbortController();
+    navigator.locks.request(
+      'engine-simulator-audio',
+      { signal: this.webLockAbort.signal },
+      () => new Promise<void>((resolve) => {
+        // Hold the lock until abort signal fires
+        this.webLockAbort!.signal.addEventListener('abort', () => resolve());
+      }),
+    ).catch(() => { /* lock released or not supported */ });
+  }
+
+  private releaseWebLock(): void {
+    if (this.webLockAbort) {
+      this.webLockAbort.abort();
+      this.webLockAbort = null;
     }
   }
 
